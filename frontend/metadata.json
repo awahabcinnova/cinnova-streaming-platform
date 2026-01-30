@@ -1,0 +1,8 @@
+{
+  "name": "StreamFlow - Video Platform",
+  "description": "A production-grade YouTube-like video platform with responsive design and mock backend integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
