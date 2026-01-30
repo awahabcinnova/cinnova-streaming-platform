@@ -1,20 +1,47 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Frontend — StreamFlow UI
 
-# Run and deploy your AI Studio app
+Modern React UI built with **Vite** and **TypeScript**, designed to feel like a polished video platform.
 
-This contains everything you need to run your app locally.
+## Tech stack
 
-View your app in AI Studio: https://ai.studio/apps/drive/1sspFJvTnhyC7bkGKuzDQoi6TtQB1lSve
+- **React**
+- **Vite**
+- **TypeScript**
+- **React Router**
+- **lucide-react** (icons)
 
-## Run Locally
+## Key behaviors
 
-**Prerequisites:**  Node.js
+- **Cookie-auth hydration on refresh**
+  - On startup, the app calls `GET /api/v1/auth/users/me` (same-origin) to restore session.
+- **Routing**
+  - Uses HashRouter (`/#/watch/:id`, `/#/history`, `/#/channel`, etc.)
+- **Watch history**
+  - Stored in `sessionStorage` with one-click clear.
 
+## API proxy (development)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+To keep auth cookies stable, the frontend calls backend via same-origin paths:
+
+- `/api/v1/*`
+- `/media/*`
+
+`vite.config.ts` proxies these to the backend server (typically `http://127.0.0.1:8000`).
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+Open:
+
+- `http://localhost:3000`
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```

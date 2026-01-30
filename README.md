@@ -1,35 +1,52 @@
-# StreamFlow — Video Platform
+# StreamFlow — Streaming & Video Platform
 
-A modern YouTube-style video platform with a FastAPI backend and a React (Vite) frontend.
+Fast, modern, YouTube-style streaming platform built with a **FastAPI + PostgreSQL** backend and a **React (Vite)** frontend.
 
 <div align="center">
 
-**Tech Stack**
+**Backend**
 
-FastAPI • PostgreSQL • SQLAlchemy (Async) • Alembic • JWT + HttpOnly Cookies • React • Vite • React Router • Lucide
+FastAPI • PostgreSQL • SQLAlchemy (Async) • Alembic • HttpOnly Cookie Auth • Google OAuth
+
+**Frontend**
+
+React • Vite • React Router • TypeScript • Lucide Icons
 
 </div>
 
-## Highlights
+## Features
 
-- **Cookie-based authentication**
-  - Access + refresh JWT stored in **HttpOnly cookies**
-  - Server-side session token stored in DB (session revocation supported)
-- **Google OAuth login** (local dev supported)
-- **Video browsing + watch page**
-- **Watch history** stored in browser session storage with one-click clear
-- **Channel profile**
+- **Secure authentication (cookie-based)**
+  - Short-lived access JWT + long-lived refresh JWT in **HttpOnly** cookies
+  - Server-side sessions in DB (supports session revoke)
+- **Google Login (OAuth 2.0)**
+  - Local development supported via redirect URIs
+- **Core product flows**
+  - Home feed
+  - Watch page
+  - Watch history (sessionStorage) with **Clear History**
+- **Channel profile customization**
   - Upload custom **avatar** and **banner**
-- **Media hosting** via backend `/media/*` (served through the frontend dev proxy in development)
+- **Media hosting**
+  - Backend serves `/media/*` (thumbnails, videos, avatars, banners)
+  - Frontend dev server proxies `/media/*` so URLs remain same-origin
 
-## Repo Structure
+## Repo structure
 
 - `backend/`
-  - FastAPI API, DB models, migrations, cookie auth, Google OAuth, media uploads
+  - FastAPI app, auth, models, migrations, media storage, API routes
 - `frontend/`
-  - React UI (Vite), routes, API client, auth hydration, channel/history/watch pages
+  - React UI (Vite), pages, components, API client, auth hydration
 
-## Quick Start (Local)
+## Architecture (quick view)
+
+- **Frontend** calls backend via same-origin paths:
+  - `/api/v1/*` (API)
+  - `/media/*` (assets)
+- In development, **Vite proxy** forwards those to `http://127.0.0.1:8000`
+- **Backend auth** sets cookies via responses (no token JSON).
+
+## Quick start (local development)
 
 ### 1) Backend
 
@@ -57,27 +74,23 @@ Open:
 - Frontend: `http://localhost:3000`
 - Backend: `http://127.0.0.1:8000`
 
-## Development Notes
+## Environment variables
 
-### Vite proxy (recommended)
-In development the frontend proxies backend calls:
+Backend config is in `backend/.env`.
 
-- `/api/v1/*` → `http://127.0.0.1:8000`
-- `/media/*` → `http://127.0.0.1:8000`
-
-This keeps cookie auth stable on refresh.
-
-### Environment variables
-
-Backend lives in `backend/.env`.
-
-At minimum:
+Minimum:
 
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (optional if you don’t use Google login)
 
-## Scripts
+Optional (Google login):
+
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI`
+- `FRONTEND_BASE_URL`
+
+## Common scripts
 
 ### Frontend
 
@@ -90,6 +103,6 @@ At minimum:
 - `uvicorn app.main:app --reload --port 8000`
 - `alembic upgrade head`
 
-## License
+## Notes
 
-Private project (add a license if you plan to distribute).
+- Keep secrets out of git (see `.gitignore` for `.env`).
