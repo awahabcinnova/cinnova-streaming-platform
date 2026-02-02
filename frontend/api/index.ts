@@ -40,6 +40,10 @@ export const authAPI = {
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/users/me`, {
             credentials: 'include',
         });
+        if (response.status === 401) return null;
+        if (!response.ok) {
+            throw new Error(`Failed to load current user (${response.status})`);
+        }
         return response.json();
     },
 };
@@ -95,13 +99,18 @@ export const videoAPI = {
 };
 
 // Comment API
-export const commentAPI = {
+export const commentAPI: {
+    getComments: (videoId: string) => Promise<any>;
+    createComment: (videoId: string, text: string, parentId?: string | null) => Promise<any>;
+    updateComment: (commentId: string, text: string) => Promise<any>;
+    deleteComment: (commentId: string) => Promise<Response>;
+} = {
     getComments: async (videoId: string) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/comments/video/${videoId}`, { credentials: 'include' });
         return response.json();
     },
 
-    createComment: async (videoId: string, userId: string, text: string) => {
+    createComment: async (videoId: string, text: string, parentId?: string | null) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/comments/create`, {
             method: 'POST',
             credentials: 'include',
@@ -109,12 +118,32 @@ export const commentAPI = {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                video_id: parseInt(videoId),
-                user_id: parseInt(userId),
+                video_id: videoId,
                 text,
+                parent_id: parentId ?? null,
             }),
         });
         return response.json();
+    },
+
+    updateComment: async (commentId: string, text: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/comments/${commentId}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text }),
+        });
+        return response.json();
+    },
+
+    deleteComment: async (commentId: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/comments/${commentId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
+        return response;
     },
 };
 

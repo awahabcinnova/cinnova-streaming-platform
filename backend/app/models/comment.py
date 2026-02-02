@@ -20,6 +20,12 @@ class Comment(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("comments.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
     text: Mapped[str] = mapped_column(Text, nullable=False)
     likes_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0")
@@ -30,6 +36,10 @@ class Comment(Base):
     video = relationship("Video", back_populates="comments")
     user = relationship("User")
 
+    parent = relationship("Comment", remote_side="Comment.id", back_populates="replies")
+    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
+
 
 Index("ix_comments_video_id_created_at", Comment.video_id, Comment.created_at)
+Index("ix_comments_parent_id", Comment.parent_id)
 Index("ix_comments_user_id", Comment.user_id)

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Radio, Mic, Video as VideoIcon, VideoOff, MicOff, MessageSquare, User as UserIcon } from 'lucide-react';
-import { livestreamAPI } from '../api';
 
 const Live: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -8,7 +7,8 @@ const Live: React.FC = () => {
     const [cameraEnabled, setCameraEnabled] = useState(true);
     const [micEnabled, setMicEnabled] = useState(true);
     const [chatMessages, setChatMessages] = useState<{ user: string, text: string }[]>([]);
-    const [streamKey, setStreamKey] = useState("live_sk_test_12345abcdef");
+    const [streamKey] = useState("");
+    const [streamTitle, setStreamTitle] = useState('');
 
     useEffect(() => {
         let stream: MediaStream | null = null;
@@ -38,18 +38,6 @@ const Live: React.FC = () => {
 
     const toggleStream = () => {
         setIsStreaming(!isStreaming);
-        if (!isStreaming) {
-            // Simulate incoming chat
-            const interval = setInterval(() => {
-                const users = ["User123", "FanBoy", "StreamLover", "ReactDev"];
-                const msgs = ["Cool stream!", "Hello!", "Nice quality", "Is this built with FastAPI?"];
-                const randomUser = users[Math.floor(Math.random() * users.length)];
-                const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
-
-                setChatMessages(prev => [...prev.slice(-10), { user: randomUser, text: randomMsg }]);
-            }, 3000);
-            return () => clearInterval(interval); // Cleanup not fully handled in this simplistic toggle
-        }
     };
 
     return (
@@ -95,7 +83,12 @@ const Live: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Stream Title</label>
-                            <input type="text" defaultValue="My Awesome Live Stream" className="w-full px-4 py-2 border rounded-lg" />
+                            <input
+                                type="text"
+                                value={streamTitle}
+                                onChange={(e) => setStreamTitle(e.target.value)}
+                                className="w-full px-4 py-2 border rounded-lg"
+                            />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -109,7 +102,12 @@ const Live: React.FC = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Stream Key (Keep Private)</label>
                             <div className="flex gap-2">
                                 <input type="password" value={streamKey} readOnly className="flex-1 px-4 py-2 border rounded-lg bg-gray-50 font-mono text-sm" />
-                                <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium">Copy</button>
+                                <button
+                                    disabled={!streamKey}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+                                >
+                                    Copy
+                                </button>
                             </div>
                             <p className="text-xs text-gray-500 mt-1">Paste this into OBS or your streaming software.</p>
                         </div>
@@ -123,7 +121,7 @@ const Live: React.FC = () => {
                     <h3 className="font-semibold">Live Chat</h3>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                         <UserIcon size={14} />
-                        <span>{isStreaming ? '1.2k' : '0'}</span>
+                        <span>0</span>
                     </div>
                 </div>
 

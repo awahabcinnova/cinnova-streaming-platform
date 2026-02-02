@@ -7,9 +7,17 @@ from fastapi import Response
 from app.core.config import Settings, get_settings
 
 
+def normalize_samesite(value: str) -> str:
+    # Starlette expects: "strict" | "lax" | "none".
+    # Users often write env like COOKIE_SAMESITE="lax" (quotes included).
+    v = (value or "").strip().strip('"').strip("'").strip().lower()
+    if v in {"lax", "strict", "none"}:
+        return v
+    return "lax"
+
+
 def _same_site(settings: Settings) -> str:
-    # FastAPI/Starlette expects "strict"|"lax"|"none" (case-insensitive OK)
-    return settings.cookie_samesite.lower()
+    return normalize_samesite(settings.cookie_samesite)
 
 
 def set_auth_cookies(

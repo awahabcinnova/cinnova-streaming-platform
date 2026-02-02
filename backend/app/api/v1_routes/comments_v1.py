@@ -3,12 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import db_session_dep
+from app.api.deps import db_session_dep, require_user
+from app.core.errors import Forbidden
 from app.models.comment import Comment
 from app.models.user import User
 from app.schemas.v1 import V1Comment
@@ -18,7 +19,11 @@ router = APIRouter()
 
 class CommentCreateBody(BaseModel):
     video_id: str
-    user_id: str
+    text: str
+    parent_id: str | None = None
+
+
+class CommentUpdateBody(BaseModel):
     text: str
 
 
@@ -45,6 +50,7 @@ async def list_comments(skip: int = 0, limit: int = 100, db: AsyncSession = Depe
                 text=c.text,
                 timestamp=ts,
                 likes=c.likes_count,
+                parentId=str(c.parent_id) if c.parent_id else None,
             )
         )
     return out
@@ -78,28 +84,79 @@ async def get_comments(videoId: str, db: AsyncSession = Depends(db_session_dep))
                 text=c.text,
                 timestamp=ts,
                 likes=c.likes_count,
+                parentId=str(c.parent_id) if c.parent_id else None,
             )
         )
     return out
 
 
 @router.post("/create", response_model=V1Comment, status_code=status.HTTP_201_CREATED)
-async def create_comment(payload: CommentCreateBody, db: AsyncSession = Depends(db_session_dep)) -> V1Comment:
+async def create_comment(
+    payload: CommentCreateBody,
+    db: AsyncSession = Depends(db_session_dep),
+    current_user: User = Depends(require_user),
+) -> V1Comment:
     vid = uuid.UUID(payload.video_id)
-    uid = uuid.UUID(payload.user_id)
-    row = Comment(video_id=vid, user_id=uid, text=payload.text)
+    parent_id = uuid.UUID(payload.parent_id) if payload.parent_id else None
+    row = Comment(video_id=vid, user_id=current_user.id, text=payload.text, parent_id=parent_id)
     db.add(row)
     await db.commit()
     await db.refresh(row)
 
-    user = await db.scalar(select(User).where(User.id == uid))
     ts = row.created_at.isoformat() if isinstance(
         row.created_at, datetime) else str(row.created_at)
     return V1Comment(
         id=str(row.id),
-        userId=str(uid),
-        username=(user.username if user else "unknown"),
+        userId=str(current_user.id),
+        username=current_user.username,
         text=row.text,
         timestamp=ts,
         likes=row.likes_count,
+        parentId=str(row.parent_id) if row.parent_id else None,
     )
+
+
+@router.patch("/{commentId}", response_model=V1Comment, status_code=status.HTTP_200_OK)
+async def update_comment(
+    commentId: str,
+    payload: CommentUpdateBody,
+    db: AsyncSession = Depends(db_session_dep),
+    current_user: User = Depends(require_user),
+) -> V1Comment:
+    cid = uuid.UUID(commentId)
+    row = await db.scalar(select(Comment).where(Comment.id == cid))
+    if row is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if row.user_id != current_user.id:
+        raise Forbidden()
+    row.text = payload.text
+    await db.commit()
+    await db.refresh(row)
+    ts = row.created_at.isoformat() if isinstance(
+        row.created_at, datetime) else str(row.created_at)
+    return V1Comment(
+        id=str(row.id),
+        userId=str(row.user_id),
+        username=current_user.username,
+        text=row.text,
+        timestamp=ts,
+        likes=row.likes_count,
+        parentId=str(row.parent_id) if row.parent_id else None,
+    )
+
+
+@router.delete("/{commentId}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    commentId: str,
+    db: AsyncSession = Depends(db_session_dep),
+    current_user: User = Depends(require_user),
+):
+    cid = uuid.UUID(commentId)
+    row = await db.scalar(select(Comment).where(Comment.id == cid))
+    if row is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if row.user_id != current_user.id:
+        raise Forbidden()
+    await db.delete(row)
+    await db.commit()
+    return None

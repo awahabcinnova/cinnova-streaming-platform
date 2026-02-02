@@ -5,27 +5,6 @@ import { Edit2, Trash2, Eye, Calendar, Search, Filter, MoreVertical, X, Save, Up
 import { Link } from 'react-router-dom';
 import { videoAPI } from '../api';
 
-// Generate Mock User Videos
-const generateUserVideos = (userId: string, count: number): Video[] => {
-    return Array.from({ length: count }).map((_, i) => ({
-        id: `uv${i}`,
-        title: `My Awesome Video Project #${i + 1}: Behind the Scenes`,
-        description: "This is a description for my video. I worked really hard on this one! Hope you enjoy it.",
-        thumbnail: `https://picsum.photos/seed/uv${i}/640/360`,
-        url: "",
-        views: Math.floor(Math.random() * 50000),
-        uploadedAt: new Date(Date.now() - Math.floor(Math.random() * 10000000000)).toLocaleDateString(),
-        duration: "10:05",
-        tags: ["vlog", "project"],
-        uploader: {
-            id: userId,
-            username: 'DemoCreator',
-            avatar: 'https://picsum.photos/seed/user1/100/100',
-            subscribers: 12500
-        }
-    }));
-};
-
 const Channel: React.FC = () => {
     const { user, refreshMe } = useAuth();
     const [videos, setVideos] = useState<Video[]>([]);
@@ -40,11 +19,19 @@ const Channel: React.FC = () => {
     const bannerInputRef = useRef<HTMLInputElement>(null);
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
+    const withCacheBust = (url: string) => {
+        // Only cache-bust our own media URLs. External providers (e.g. Google) can rate-limit.
+        if (!url) return '';
+        if (!url.startsWith('/media/')) return url;
+        const ts = Date.now();
+        return `${url}${url.includes('?') ? '&' : '?'}v=${ts}`;
+    };
+
     // Sync user data with local state when user object changes
     useEffect(() => {
         if (user) {
-            setBanner(user.banner || '');
-            setAvatar(user.avatar || '');
+            setBanner(user.banner ? withCacheBust(user.banner) : '');
+            setAvatar(user.avatar ? withCacheBust(user.avatar) : '');
         }
     }, [user]);
 
@@ -99,11 +86,19 @@ const Channel: React.FC = () => {
         if (e.target.files && e.target.files[0]) {
             const formData = new FormData();
             formData.append('avatar', e.target.files[0]);
-            await fetch('/api/v1/users/me/avatar', {
+            const resp = await fetch('/api/v1/users/me/avatar', {
                 method: 'POST',
                 credentials: 'include',
                 body: formData,
             });
+            try {
+                const data = await resp.json();
+                if (data?.avatar) {
+                    setAvatar(withCacheBust(String(data.avatar)));
+                }
+            } catch {
+                // ignore
+            }
             await refreshMe();
         }
     };
@@ -112,11 +107,19 @@ const Channel: React.FC = () => {
         if (e.target.files && e.target.files[0]) {
             const formData = new FormData();
             formData.append('banner', e.target.files[0]);
-            await fetch('/api/v1/users/me/banner', {
+            const resp = await fetch('/api/v1/users/me/banner', {
                 method: 'POST',
                 credentials: 'include',
                 body: formData,
             });
+            try {
+                const data = await resp.json();
+                if (data?.banner) {
+                    setBanner(withCacheBust(String(data.banner)));
+                }
+            } catch {
+                // ignore
+            }
             await refreshMe();
         }
     };
@@ -126,6 +129,7 @@ const Channel: React.FC = () => {
             method: 'DELETE',
             credentials: 'include',
         });
+        setAvatar('');
         await refreshMe();
     };
     // Remove banner
@@ -134,6 +138,7 @@ const Channel: React.FC = () => {
             method: 'DELETE',
             credentials: 'include',
         });
+        setBanner('');
         await refreshMe();
     };
 
@@ -145,16 +150,16 @@ const Channel: React.FC = () => {
             <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                 {/* Banner */}
                 <div className="h-32 md:h-48 bg-gradient-to-r from-slate-800 to-slate-600 relative">
-                    {user.banner && (
-                        <img src={user.banner} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+                    {banner && (
+                        <img src={banner} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
                     )}
                     <button
                         className="absolute bottom-4 right-4 bg-black/40 text-white px-3 py-1.5 rounded-lg text-xs font-medium backdrop-blur-md hover:bg-black/60 transition-colors flex items-center gap-2"
                         onClick={() => bannerInputRef.current?.click()}
                     >
-                        <PenTool size={14} /> {user.banner ? 'Change Banner' : 'Upload Banner'}
+                        <PenTool size={14} /> {banner ? 'Change Banner' : 'Upload Banner'}
                     </button>
-                    {user.banner && (
+                    {banner && (
                         <button
                             className="absolute bottom-4 left-4 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700 transition-colors"
                             onClick={handleRemoveBanner}
@@ -176,7 +181,7 @@ const Channel: React.FC = () => {
                     <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-10">
                         <div className="relative">
                             <img
-                                src={user.avatar}
+                                src={avatar || user.avatar}
                                 alt={user.username}
                                 className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
                             />
@@ -187,7 +192,7 @@ const Channel: React.FC = () => {
                             >
                                 <Edit2 size={12} />
                             </div>
-                            {user.avatar && (
+                            {(avatar || user.avatar) && (
                                 <button
                                     className="absolute top-1 left-1 bg-red-600 text-white p-1 rounded-full border-2 border-white hover:bg-red-700"
                                     onClick={handleRemoveAvatar}

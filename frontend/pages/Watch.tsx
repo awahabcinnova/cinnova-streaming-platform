@@ -15,6 +15,34 @@ const Watch: React.FC = () => {
   const [video, setVideo] = useState<Video | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
+  const [visibleRepliesCount, setVisibleRepliesCount] = useState<Record<string, number>>({});
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+
+  type ThreadedComment = Comment & { replies: ThreadedComment[] };
+
+  const buildThread = (items: Comment[]): ThreadedComment[] => {
+    const byId = new Map<string, ThreadedComment>();
+    const roots: ThreadedComment[] = [];
+
+    for (const c of items) {
+      byId.set(c.id, { ...c, replies: [] });
+    }
+
+    for (const c of byId.values()) {
+      const pid = c.parentId;
+      if (pid && byId.has(pid)) {
+        byId.get(pid)!.replies.push(c);
+      } else {
+        roots.push(c);
+      }
+    }
+
+    return roots;
+  };
 
   useEffect(() => {
     const fetchVideoData = async () => {
@@ -50,18 +78,235 @@ const Watch: React.FC = () => {
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim() || !id) return;
+    if (!user?.id) return;
 
     try {
       // Submit comment to backend
-      const commentResponse = await commentAPI.createComment(id, '1', newComment);
+      const commentResponse = await commentAPI.createComment(id, newComment, null);
 
       // Add the new comment to the list
-      setComments([commentResponse, ...comments]);
+      setComments((prev) => [commentResponse, ...prev]);
       setNewComment('');
     } catch (error) {
       console.error('Error submitting comment:', error);
     }
   };
+
+  const handleReplySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyToId || !replyText.trim() || !id) return;
+    if (!user?.id) return;
+
+    try {
+      const created = await commentAPI.createComment(id, replyText, replyToId);
+      setComments((prev) => [...prev, created]);
+      setReplyText('');
+      setReplyToId(null);
+    } catch (error) {
+      console.error('Error submitting reply:', error);
+    }
+  };
+
+  const threaded = buildThread(comments);
+
+  const removeCommentFromState = (commentId: string) => {
+    setComments((prev) => {
+      const childrenByParent = new Map<string, string[]>();
+      for (const c of prev) {
+        if (c.parentId) {
+          const arr = childrenByParent.get(c.parentId) ?? [];
+          arr.push(c.id);
+          childrenByParent.set(c.parentId, arr);
+        }
+      }
+
+      const toDelete = new Set<string>();
+      const stack: string[] = [commentId];
+      while (stack.length) {
+        const cur = stack.pop()!;
+        if (toDelete.has(cur)) continue;
+        toDelete.add(cur);
+        const kids = childrenByParent.get(cur) ?? [];
+        for (const k of kids) stack.push(k);
+      }
+
+      return prev.filter((c) => !toDelete.has(c.id));
+    });
+  };
+
+  const CommentNode: React.FC<{ node: ThreadedComment; depth: number }> = ({ node, depth }) => (
+    <div className={depth > 0 ? 'ml-12 mt-4' : ''}>
+      <div className="flex gap-4">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0 text-white flex items-center justify-center font-bold text-sm">
+          {node.username[0]}
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-semibold text-sm">{node.username}</span>
+            <span className="text-xs text-gray-500">{node.timestamp}</span>
+          </div>
+          {editingCommentId === node.id ? (
+            <form
+              className="mt-1"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!editingText.trim()) return;
+                try {
+                  const updated = await commentAPI.updateComment(node.id, editingText);
+                  setComments((prev) => prev.map((c) => (c.id === node.id ? { ...c, text: updated.text } : c)));
+                  setEditingCommentId(null);
+                  setEditingText('');
+                } catch (error) {
+                  console.error('Error updating comment:', error);
+                }
+              }}
+            >
+              <input
+                type="text"
+                className="w-full border-b border-gray-300 focus:border-black focus:outline-none pb-1 transition-colors bg-transparent text-sm"
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value)}
+              />
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={!editingText.trim()}
+                  className="text-xs font-medium text-blue-600 disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-gray-500 hover:text-black"
+                  onClick={() => {
+                    setEditingCommentId(null);
+                    setEditingText('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm text-gray-800">{node.text}</p>
+          )}
+          <div className="flex items-center gap-4 mt-2">
+            <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-black">
+              <ThumbsUp size={14} />
+              {node.likes}
+            </button>
+            <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-black">
+              <ThumbsDown size={14} />
+            </button>
+            <button
+              type="button"
+              className="text-xs font-medium text-gray-500 hover:text-black"
+              onClick={() => {
+                setReplyToId(node.id);
+                setReplyText('');
+              }}
+            >
+              Reply
+            </button>
+
+            {node.replies?.length ? (
+              <button
+                type="button"
+                className="text-xs font-medium text-blue-600"
+                onClick={() => {
+                  setExpandedReplies((prev) => ({
+                    ...prev,
+                    [node.id]: !prev[node.id],
+                  }));
+                  setVisibleRepliesCount((prev) => ({
+                    ...prev,
+                    [node.id]: prev[node.id] ?? 5,
+                  }));
+                }}
+              >
+                {expandedReplies[node.id] ? 'Hide replies' : `View replies (${node.replies.length})`}
+              </button>
+            ) : null}
+
+            {user?.id && user.id === node.userId ? (
+              <>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-gray-500 hover:text-black"
+                  onClick={() => {
+                    setEditingCommentId(node.id);
+                    setEditingText(node.text);
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-red-600"
+                  onClick={async () => {
+                    try {
+                      await commentAPI.deleteComment(node.id);
+                      removeCommentFromState(node.id);
+                    } catch (error) {
+                      console.error('Error deleting comment:', error);
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          {replyToId === node.id ? (
+            <form onSubmit={handleReplySubmit} className="mt-3 flex gap-3">
+              <input
+                type="text"
+                placeholder="Write a reply..."
+                className="flex-1 border-b border-gray-300 focus:border-black focus:outline-none pb-1 transition-colors bg-transparent text-sm"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+              />
+              <button
+                type="submit"
+                disabled={!replyText.trim()}
+                className="text-sm font-medium text-blue-600 disabled:opacity-50"
+              >
+                Reply
+              </button>
+            </form>
+          ) : null}
+
+          {node.replies?.length && expandedReplies[node.id] ? (
+            <div className={depth === 0 ? 'mt-3' : 'mt-2'}>
+              <div>
+                {node.replies
+                  .slice(0, visibleRepliesCount[node.id] ?? 5)
+                  .map((r) => (
+                    <CommentNode key={r.id} node={r} depth={depth + 1} />
+                  ))}
+              </div>
+
+              {(visibleRepliesCount[node.id] ?? 5) < node.replies.length ? (
+                <button
+                  type="button"
+                  className="ml-12 mt-2 text-xs font-medium text-blue-600"
+                  onClick={() =>
+                    setVisibleRepliesCount((prev) => ({
+                      ...prev,
+                      [node.id]: (prev[node.id] ?? 5) + 5,
+                    }))
+                  }
+                >
+                  View more replies
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 
   if (!video) return <div className="p-8 text-center">Loading video...</div>;
 
@@ -150,29 +395,8 @@ const Watch: React.FC = () => {
           </form>
 
           <div className="space-y-6">
-            {comments.map((comment) => (
-              <div key={comment.id} className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0 text-white flex items-center justify-center font-bold text-sm">
-                  {comment.username[0]}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold text-sm">{comment.username}</span>
-                    <span className="text-xs text-gray-500">{comment.timestamp}</span>
-                  </div>
-                  <p className="text-sm text-gray-800">{comment.text}</p>
-                  <div className="flex items-center gap-4 mt-2">
-                    <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-black">
-                      <ThumbsUp size={14} />
-                      {comment.likes}
-                    </button>
-                    <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-black">
-                      <ThumbsDown size={14} />
-                    </button>
-                    <button className="text-xs font-medium text-gray-500 hover:text-black">Reply</button>
-                  </div>
-                </div>
-              </div>
+            {threaded.map((node) => (
+              <CommentNode key={node.id} node={node} depth={0} />
             ))}
           </div>
         </div>

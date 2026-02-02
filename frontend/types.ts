@@ -13,6 +13,7 @@ export interface Comment {
   text: string;
   timestamp: string;
   likes: number;
+  parentId?: string | null;
 }
 
 export interface Video {

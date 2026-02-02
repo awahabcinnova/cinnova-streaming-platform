@@ -13,13 +13,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const MOCK_USER: User = {
-  id: 'u1',
-  username: 'DemoCreator',
-  avatar: 'https://picsum.photos/seed/user1/100/100',
-  subscribers: 12500
-};
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -43,7 +36,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshMe = useCallback(async () => {
     try {
       const me = await authAPI.getCurrentUser();
-      if (me?.id) setUser(me);
+      if (me?.id) {
+        setUser(me);
+      } else {
+        setUser(null);
+      }
     } catch {
       // ignore
     }

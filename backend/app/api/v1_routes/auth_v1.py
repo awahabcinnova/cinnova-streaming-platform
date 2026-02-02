@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 import re
 import secrets
 from urllib.parse import urlencode
@@ -12,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import db_session_dep
 from app.core.config import get_settings
-from app.core.cookies import clear_auth_cookies, set_auth_cookies
+from app.core.cookies import clear_auth_cookies, normalize_samesite, set_auth_cookies
 from app.core.errors import AuthInvalid
 from app.core.security import TokenError, decode_jwt, sha256_hex
 from app.models.session import Session
@@ -21,6 +23,8 @@ from app.schemas.v1 import V1User
 from app.services.auth_service import AuthService
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 
 def _username_from_email(email: str) -> str:
@@ -40,10 +44,17 @@ def _to_v1_user(user: User, subscribers: int = 0) -> V1User:
 
 
 @router.get("/google/login")
-async def google_login() -> RedirectResponse:
+async def google_login(request: Request) -> RedirectResponse:
     settings = get_settings()
     if not settings.google_client_id or not settings.google_redirect_uri:
         raise AuthInvalid("Google OAuth is not configured")
+
+    logger.info(
+        "Google OAuth login start host=%s url=%s redirect_uri=%s",
+        request.headers.get("host"),
+        str(request.url),
+        settings.google_redirect_uri,
+    )
 
     state = secrets.token_urlsafe(32)
 
@@ -64,7 +75,7 @@ async def google_login() -> RedirectResponse:
         value=state,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite.lower(),
+        samesite=normalize_samesite(settings.cookie_samesite),
         path="/",
     )
     return resp
@@ -82,14 +93,30 @@ async def google_callback(
     settings = get_settings()
     frontend_redirect = settings.frontend_base_url.rstrip("/") + "/#/"
 
+    logger.info(
+        "Google OAuth callback start host=%s url=%s state_present=%s cookie_state_present=%s",
+        request.headers.get("host"),
+        str(request.url),
+        bool(state),
+        bool(request.cookies.get("google_oauth_state")),
+    )
+
     if error:
+        logger.warning("Google OAuth callback error=%s", error)
         return RedirectResponse(url=frontend_redirect + "login?error=google", status_code=status.HTTP_302_FOUND)
 
     if not code or not state:
+        logger.warning("Google OAuth callback missing code/state code=%s state=%s", bool(code), bool(state))
         return RedirectResponse(url=frontend_redirect + "login?error=google", status_code=status.HTTP_302_FOUND)
 
     expected_state = request.cookies.get("google_oauth_state")
     if not expected_state or expected_state != state:
+        logger.warning(
+            "Google OAuth state mismatch expected=%s got=%s (cookie_present=%s)",
+            (expected_state[:8] + "...") if expected_state else None,
+            (state[:8] + "...") if state else None,
+            bool(expected_state),
+        )
         return RedirectResponse(url=frontend_redirect + "login?error=google_state", status_code=status.HTTP_302_FOUND)
 
     if not settings.google_client_id or not settings.google_client_secret or not settings.google_redirect_uri:
@@ -108,6 +135,7 @@ async def google_callback(
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         if token_resp.status_code != 200:
+            logger.warning("Google OAuth token exchange failed status=%s body=%s", token_resp.status_code, token_resp.text)
             return RedirectResponse(url=frontend_redirect + "login?error=google_token", status_code=status.HTTP_302_FOUND)
         token_data = token_resp.json()
 
@@ -120,6 +148,7 @@ async def google_callback(
             headers={"Authorization": f"Bearer {access_token}"},
         )
         if userinfo_resp.status_code != 200:
+            logger.warning("Google OAuth userinfo failed status=%s body=%s", userinfo_resp.status_code, userinfo_resp.text)
             return RedirectResponse(url=frontend_redirect + "login?error=google_userinfo", status_code=status.HTTP_302_FOUND)
 
         info = userinfo_resp.json()
@@ -129,6 +158,7 @@ async def google_callback(
     picture = info.get("picture")
 
     if not google_sub or not email:
+        logger.warning("Google OAuth profile missing sub/email sub_present=%s email_present=%s", bool(google_sub), bool(email))
         return RedirectResponse(url=frontend_redirect + "login?error=google_profile", status_code=status.HTTP_302_FOUND)
 
     user = await db.scalar(select(User).where(User.google_sub == google_sub))
@@ -141,9 +171,37 @@ async def google_callback(
             user.username = _username_from_email(email)
         user.google_sub = google_sub
         user.google_email = email
-        if picture and not user.avatar_url:
-            user.avatar_url = picture
         await db.flush()
+
+    # Ensure avatar is stable and same-origin (avoid hotlinking/rate-limits) for both new and existing users.
+    if user is not None and picture and (not user.avatar_url or str(user.avatar_url).startswith("http")):
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                pic_resp = await client.get(picture)
+            if pic_resp.status_code == 200 and pic_resp.content:
+                content_type = (pic_resp.headers.get("content-type") or "").lower()
+                ext = ".jpg"
+                if "png" in content_type:
+                    ext = ".png"
+                elif "webp" in content_type:
+                    ext = ".webp"
+                elif "jpeg" in content_type or "jpg" in content_type:
+                    ext = ".jpg"
+
+                avatar_dir = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "../../../media/avatars")
+                )
+                os.makedirs(avatar_dir, exist_ok=True)
+                filename = f"{user.id}{ext}"
+                avatar_path = os.path.join(avatar_dir, filename)
+                with open(avatar_path, "wb") as f:
+                    f.write(pic_resp.content)
+                user.avatar_url = f"/media/avatars/{filename}"
+                await db.flush()
+            else:
+                logger.warning("Google avatar download failed status=%s", pic_resp.status_code)
+        except Exception as e:
+            logger.warning("Google avatar download error: %s", str(e))
 
     session, session_token, access, refresh = await AuthService.create_login_session(db, user=user)
     await db.commit()
@@ -156,6 +214,7 @@ async def google_callback(
         session_token=session_token,
         session_expires_at=session.expires_at,
     )
+    logger.info("Google OAuth login success; auth cookies set")
     redirect_resp.delete_cookie("google_oauth_state", path="/")
     return redirect_resp
 

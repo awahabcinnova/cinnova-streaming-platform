@@ -10,6 +10,11 @@ const Layout: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -67,9 +72,6 @@ const Layout: React.FC = () => {
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
               <img src={user.avatar} alt="Profile" className="w-8 h-8 rounded-full" />
-              <button onClick={logout} className="text-sm font-medium text-gray-700 hover:text-red-600 hidden md:block">
-                Sign Out
-              </button>
             </div>
           ) : (
             <Link to="/login" className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-full text-blue-600 font-medium hover:bg-blue-50">
@@ -127,6 +129,17 @@ const Layout: React.FC = () => {
               <div className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center gap-4">
                 <ThumbsUp size={20} /> Liked Videos
               </div>
+
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 text-gray-700"
+                >
+                  <LogOut size={20} />
+                  Logout
+                </button>
+              ) : null}
             </div>
           </div>
         </aside>

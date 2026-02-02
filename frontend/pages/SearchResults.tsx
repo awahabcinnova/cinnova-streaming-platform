@@ -1,35 +1,42 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import { Filter } from 'lucide-react';
 import { Video } from '../types';
-
-// Mock Data Generator
-const generateSearchResults = (query: string): Video[] => {
-  return Array.from({ length: 10 }).map((_, i) => ({
-    id: `s${i}`,
-    title: `${query} Tutorial #${i + 1}: The Ultimate Guide`,
-    description: `This is a highly relevant video about ${query}. We dive deep into the topic and explain everything you need to know.`,
-    thumbnail: `https://picsum.photos/seed/search${i}${query}/640/360`,
-    url: "",
-    views: Math.floor(Math.random() * 1000000),
-    uploadedAt: `${Math.floor(Math.random() * 11) + 1} months ago`,
-    duration: "15:45",
-    tags: [query, "tutorial"],
-    uploader: {
-      id: `u${i}`,
-      username: `Expert ${i + 1}`,
-      avatar: `https://picsum.photos/seed/u${i}/100/100`,
-      subscribers: 100000 * (i + 1)
-    }
-  }));
-};
+import { videoAPI } from '../api';
 
 const SearchResults: React.FC = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
 
-  const results = useMemo(() => generateSearchResults(query), [query]);
+  const [allVideos, setAllVideos] = useState<Video[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const data = await videoAPI.getAllVideos();
+        if (alive) setAllVideos(Array.isArray(data) ? data : []);
+      } catch {
+        if (alive) setAllVideos([]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return allVideos;
+    return allVideos.filter((v) => {
+      const inTitle = (v.title || '').toLowerCase().includes(q);
+      const inDesc = (v.description || '').toLowerCase().includes(q);
+      const inUploader = (v.uploader?.username || '').toLowerCase().includes(q);
+      const inTags = Array.isArray(v.tags) && v.tags.some((t) => String(t).toLowerCase().includes(q));
+      return inTitle || inDesc || inUploader || inTags;
+    });
+  }, [allVideos, query]);
 
   return (
     <div className="max-w-5xl mx-auto pt-4">

@@ -34,6 +34,7 @@ class V1Comment(BaseModel):
     text: str
     timestamp: str
     likes: int = 0
+    parentId: str | None = None
 
 
 class V1Livestream(BaseModel):

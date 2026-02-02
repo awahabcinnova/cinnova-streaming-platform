@@ -230,7 +230,7 @@ const Upload: React.FC = () => {
                     </div>
                     <div className="mt-4 pt-4 border-t border-gray-200">
                       <p className="text-xs text-gray-500">Video Link</p>
-                      <p className="text-sm text-blue-600 truncate">https://streamflow.com/v/xyz123</p>
+                      <p className="text-sm text-gray-500 truncate">Will be available after upload</p>
                     </div>
                   </div>
                 </div>

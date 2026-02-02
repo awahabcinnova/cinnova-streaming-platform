@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Check } from 'lucide-react';
@@ -27,10 +27,16 @@ const GoogleIcon = () => (
 );
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated, isAuthLoading } = useAuth();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthLoading && isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthLoading, isAuthenticated, navigate]);
 
   // Form states
   const [email, setEmail] = useState('');
