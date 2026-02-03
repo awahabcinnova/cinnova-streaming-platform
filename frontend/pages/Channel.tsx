@@ -4,6 +4,7 @@ import { Video } from '../types';
 import { Edit2, Trash2, Eye, Calendar, Search, Filter, MoreVertical, X, Save, Upload, PenTool } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { videoAPI } from '../api';
+import { resolveMediaUrl } from '../utils/media';
 
 const Channel: React.FC = () => {
     const { user, refreshMe } = useAuth();
@@ -21,10 +22,11 @@ const Channel: React.FC = () => {
 
     const withCacheBust = (url: string) => {
         // Only cache-bust our own media URLs. External providers (e.g. Google) can rate-limit.
-        if (!url) return '';
-        if (!url.startsWith('/media/')) return url;
+        const resolved = resolveMediaUrl(url);
+        if (!resolved) return '';
+        if (!resolved.includes('/media/')) return resolved;
         const ts = Date.now();
-        return `${url}${url.includes('?') ? '&' : '?'}v=${ts}`;
+        return `${resolved}${resolved.includes('?') ? '&' : '?'}v=${ts}`;
     };
 
     // Sync user data with local state when user object changes
@@ -181,7 +183,7 @@ const Channel: React.FC = () => {
                     <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-10">
                         <div className="relative">
                             <img
-                                src={avatar || user.avatar}
+                                src={avatar || resolveMediaUrl(user.avatar)}
                                 alt={user.username}
                                 className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md bg-white object-cover"
                             />

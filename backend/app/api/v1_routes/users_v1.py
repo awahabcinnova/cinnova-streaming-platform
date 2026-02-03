@@ -9,6 +9,7 @@ from sqlalchemy.orm import joinedload
 import os
 
 from app.api.deps import db_session_dep, require_user
+from app.api.media import resolve_user_avatar, resolve_user_banner
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.schemas.v1 import V1User
@@ -27,8 +28,41 @@ async def list_users(skip: int = 0, limit: int = 100, db: AsyncSession = Depends
     for user in users:
         subs = await db.scalar(select(func.count()).select_from(Subscription).where(Subscription.channel_id == user.id))
         result.append(V1User(id=str(user.id), username=user.username,
-                      avatar=user.avatar_url or "", banner=getattr(user, "banner_url", "") or "", subscribers=int(subs or 0)))
+                      avatar=resolve_user_avatar(user) or "", banner=resolve_user_banner(user) or "", subscribers=int(subs or 0)))
 
+    return result
+
+
+@router.get("/search", response_model=list[V1User])
+async def search_users(q: str = "", skip: int = 0, limit: int = 50, db: AsyncSession = Depends(db_session_dep)) -> list[V1User]:
+    query = (q or "").strip()
+    if not query:
+        return []
+
+    users = (
+        await db.execute(
+            select(User)
+            .where(User.username.ilike(f"%{query}%"))
+            .order_by(User.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+    ).scalars().all()
+    if not users:
+        return []
+
+    result = []
+    for user in users:
+        subs = await db.scalar(select(func.count()).select_from(Subscription).where(Subscription.channel_id == user.id))
+        result.append(
+            V1User(
+                id=str(user.id),
+                username=user.username,
+                avatar=user.avatar_url or "",
+                banner=getattr(user, "banner_url", "") or "",
+                subscribers=int(subs or 0),
+            )
+        )
     return result
 
 
@@ -39,7 +73,7 @@ async def get_user(id: str, db: AsyncSession = Depends(db_session_dep)) -> V1Use
     if user is None:
         return V1User(id=id, username="unknown", avatar="", banner="", subscribers=0)
     subs = await db.scalar(select(func.count()).select_from(Subscription).where(Subscription.channel_id == user.id))
-    return V1User(id=str(user.id), username=user.username, avatar=user.avatar_url or "", banner=getattr(user, "banner_url", "") or "", subscribers=int(subs or 0))
+    return V1User(id=str(user.id), username=user.username, avatar=resolve_user_avatar(user) or "", banner=resolve_user_banner(user) or "", subscribers=int(subs or 0))
 
 
 @router.post("/me/avatar", status_code=200)

@@ -21,16 +21,20 @@ class V1Video(BaseModel):
     thumbnail: str
     url: str
     views: int
+    likes: int = 0
+    dislikes: int = 0
     uploadedAt: str
     duration: str
     uploader: V1User
     tags: list[str] = Field(default_factory=list)
+    viewerReaction: str | None = None
 
 
 class V1Comment(BaseModel):
     id: str
     userId: str
     username: str
+    avatar: str = ""
     text: str
     timestamp: str
     likes: int = 0

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, User as UserIcon, Send } from 'lucide-react';
-import VideoCard from '../components/VideoCard';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ThumbsUp, ThumbsDown, Share2, MoreHorizontal, User as UserIcon } from 'lucide-react';
 import { Video, Comment } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { resolveMediaUrl } from '../utils/media';
 
-import { videoAPI, commentAPI, userAPI } from '../api';
-
-const BACKEND_BASE_URL = '';
+import { videoAPI, commentAPI, subscriptionAPI } from '../api';
 
 const Watch: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +19,19 @@ const Watch: React.FC = () => {
   const [visibleRepliesCount, setVisibleRepliesCount] = useState<Record<string, number>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const trackingViewRef = useRef<Record<string, boolean>>({});
+  const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubBusy, setIsSubBusy] = useState(false);
+  const [likeCount, setLikeCount] = useState<number | null>(null);
+  const [dislikeCount, setDislikeCount] = useState<number | null>(null);
+  const [reaction, setReaction] = useState<'like' | 'dislike' | null>(null);
+  const [isReactionBusy, setIsReactionBusy] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const reactionBusyRef = useRef(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
 
   type ThreadedComment = Comment & { replies: ThreadedComment[] };
 
@@ -51,16 +62,29 @@ const Watch: React.FC = () => {
           // Fetch video data
           const videoData = await videoAPI.getVideoById(id);
           setVideo(videoData);
+          setSubscriberCount(videoData?.uploader?.subscribers ?? 0);
+          setLikeCount(videoData?.likes ?? 0);
+          setDislikeCount(videoData?.dislikes ?? 0);
+          setReaction(videoData?.viewerReaction ?? null);
 
           // Fetch comments for this video
           const commentsData = await commentAPI.getComments(id);
           setComments(commentsData);
 
-          // Track view only once per user per session
-          const viewedKey = `viewed_video_${id}_user_${user?.id || 'guest'}`;
-          if (!sessionStorage.getItem(viewedKey)) {
-            await videoAPI.trackView(id);
-            sessionStorage.setItem(viewedKey, '1');
+          // Track view only once per user per session (logged-in users only)
+          if (user?.id) {
+            const viewedKey = `viewed_video_${id}_user_${user.id}`;
+            if (!sessionStorage.getItem(viewedKey) && !trackingViewRef.current[viewedKey]) {
+              trackingViewRef.current[viewedKey] = true;
+              sessionStorage.setItem(viewedKey, '1');
+              try {
+                await videoAPI.trackView(id);
+              } catch (error) {
+                sessionStorage.removeItem(viewedKey);
+                trackingViewRef.current[viewedKey] = false;
+                throw error;
+              }
+            }
           }
 
           // Scroll to top
@@ -74,6 +98,143 @@ const Watch: React.FC = () => {
     fetchVideoData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id]);
+
+  useEffect(() => {
+    if (!video?.uploader?.id) return;
+    const loadSubscribers = async () => {
+      try {
+        const data = await subscriptionAPI.getSubscribers(video.uploader.id);
+        const list = Array.isArray(data?.subscribers) ? data.subscribers : [];
+        const count = typeof data?.count === 'number' ? data.count : list.length;
+        setSubscriberCount(count);
+        if (user?.id) {
+          setIsSubscribed(list.includes(user.id));
+        } else {
+          setIsSubscribed(false);
+        }
+      } catch {
+        if (typeof video?.uploader?.subscribers === 'number') {
+          setSubscriberCount(video.uploader.subscribers);
+        }
+      }
+    };
+    loadSubscribers();
+  }, [video?.uploader?.id, user?.id]);
+
+  const handleSubscribeToggle = async () => {
+    if (!user?.id || !video?.uploader?.id) return;
+    if (user.id === video.uploader.id) return;
+    if (isSubBusy) return;
+    setIsSubBusy(true);
+    try {
+      if (isSubscribed) {
+        await subscriptionAPI.unsubscribe(video.uploader.id, user.id);
+        setIsSubscribed(false);
+        setSubscriberCount((c) => Math.max(0, (c ?? video.uploader.subscribers) - 1));
+      } else {
+        await subscriptionAPI.subscribe(video.uploader.id, user.id);
+        setIsSubscribed(true);
+        setSubscriberCount((c) => (c ?? video.uploader.subscribers) + 1);
+      }
+    } finally {
+      setIsSubBusy(false);
+    }
+  };
+
+  const applyReactionFromResponse = (resp: any) => {
+    if (resp && typeof resp.reaction !== 'undefined') {
+      setReaction(resp.reaction ?? null);
+    }
+    if (resp && typeof resp.likes === 'number') {
+      setLikeCount(resp.likes);
+    }
+    if (resp && typeof resp.dislikes === 'number') {
+      setDislikeCount(resp.dislikes);
+    }
+  };
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 2000);
+  };
+
+  const openShare = () => {
+    if (!id) return;
+    const link = `${window.location.origin}/watch/${id}`;
+    setShareLink(link);
+    setIsShareOpen(true);
+  };
+
+  const closeShare = () => {
+    setIsShareOpen(false);
+  };
+
+  const handleCopyLink = async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      showToast('Link copied');
+    } catch {
+      showToast('Failed to copy link');
+    }
+  };
+
+  const handleNativeShare = async () => {
+    if (!shareLink) return;
+    if (!navigator.share) {
+      showToast('Share not supported on this device');
+      return;
+    }
+    try {
+      await navigator.share({
+        title: video?.title || 'Video',
+        text: video?.title || 'Watch this video',
+        url: shareLink,
+      });
+    } catch {
+      // User cancelled or share failed; keep silent
+    }
+  };
+
+  const handleLikeToggle = async () => {
+    if (!user?.id || !id) {
+      showToast('Login required to like videos');
+      return;
+    }
+    if (reactionBusyRef.current) return;
+    reactionBusyRef.current = true;
+    setIsReactionBusy(true);
+    try {
+      const resp = await videoAPI.likeVideo(id);
+      applyReactionFromResponse(resp);
+    } finally {
+      reactionBusyRef.current = false;
+      setIsReactionBusy(false);
+    }
+  };
+
+  const handleDislikeToggle = async () => {
+    if (!user?.id || !id) {
+      showToast('Login required to dislike videos');
+      return;
+    }
+    if (reactionBusyRef.current) return;
+    reactionBusyRef.current = true;
+    setIsReactionBusy(true);
+    try {
+      const resp = await videoAPI.dislikeVideo(id);
+      applyReactionFromResponse(resp);
+    } finally {
+      reactionBusyRef.current = false;
+      setIsReactionBusy(false);
+    }
+  };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,12 +298,22 @@ const Watch: React.FC = () => {
   const CommentNode: React.FC<{ node: ThreadedComment; depth: number }> = ({ node, depth }) => (
     <div className={depth > 0 ? 'ml-12 mt-4' : ''}>
       <div className="flex gap-4">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0 text-white flex items-center justify-center font-bold text-sm">
-          {node.username[0]}
-        </div>
+        {node.avatar ? (
+          <img
+            src={resolveMediaUrl(node.avatar)}
+            alt={node.username}
+            className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex-shrink-0 text-white flex items-center justify-center font-bold text-sm">
+            {node.username[0]}
+          </div>
+        )}
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-semibold text-sm">{node.username}</span>
+            <Link to={`/user/${node.userId}`} className="font-semibold text-sm hover:underline">
+              {node.username}
+            </Link>
             <span className="text-xs text-gray-500">{node.timestamp}</span>
           </div>
           {editingCommentId === node.id ? (
@@ -311,13 +482,13 @@ const Watch: React.FC = () => {
   if (!video) return <div className="p-8 text-center">Loading video...</div>;
 
   return (
-    <div className="max-w-[1800px] mx-auto flex flex-col lg:flex-row gap-6">
+    <div className="max-w-[1800px] mx-auto flex flex-col lg:flex-row gap-6 relative">
       {/* Main Column */}
       <div className="flex-1">
         {/* Video Player Container */}
         <div className="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative group">
           <video
-            src={video.url.startsWith('/media/') ? BACKEND_BASE_URL + video.url : video.url}
+            src={resolveMediaUrl(video.url)}
             className="w-full h-full object-contain"
             controls
             autoPlay
@@ -331,18 +502,72 @@ const Watch: React.FC = () => {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between mt-3 gap-4">
             <div className="flex items-center gap-4">
-              <img src={video.uploader.avatar} alt={video.uploader.username} className="w-10 h-10 rounded-full" />
+              <Link to={`/user/${video.uploader.id}`}>
+                <img
+                  src={resolveMediaUrl(video.uploader.avatar)}
+                  alt={video.uploader.username}
+                  className="w-10 h-10 rounded-full"
+                />
+              </Link>
               <div>
-                <h3 className="font-semibold text-gray-900">{video.uploader.username}</h3>
-                <p className="text-xs text-gray-500">{video.uploader.subscribers.toLocaleString()} subscribers</p>
+                <Link to={`/user/${video.uploader.id}`} className="font-semibold text-gray-900 hover:underline">
+                  {video.uploader.username}
+                </Link>
+                <p className="text-xs text-gray-500">
+                  {(subscriberCount ?? video.uploader.subscribers).toLocaleString()} subscribers
+                </p>
               </div>
-              <button className="bg-black text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-colors ml-4">
-                Subscribe
+              <button
+                type="button"
+                disabled={!user?.id || user.id === video.uploader.id || isSubBusy}
+                onClick={handleSubscribeToggle}
+                className={
+                  `px-4 py-2 rounded-full text-sm font-medium transition-colors ml-4 ` +
+                  (isSubscribed
+                    ? 'bg-white text-black border border-black hover:bg-gray-100'
+                    : 'bg-black text-white hover:bg-gray-800') +
+                  (!user?.id || user?.id === video.uploader.id ? ' opacity-50 cursor-not-allowed' : '')
+                }
+              >
+                {isSubscribed ? 'Subscribed' : 'Subscribe'}
               </button>
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto">
-              <button className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium h-9">
+              <div className="flex items-center bg-gray-100 rounded-full h-9">
+                <button
+                  type="button"
+                  disabled={!user?.id || isReactionBusy}
+                  onClick={handleLikeToggle}
+                  className={
+                    `flex items-center gap-2 px-4 h-9 rounded-l-full text-sm font-medium transition-colors ` +
+                    (reaction === 'like' ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-200') +
+                    (!user?.id ? ' opacity-50 cursor-not-allowed' : '')
+                  }
+                >
+                  <ThumbsUp size={18} />
+                  {(likeCount ?? video.likes).toLocaleString()}
+                </button>
+                <div className="w-px h-5 bg-gray-300" />
+                <button
+                  type="button"
+                  disabled={!user?.id || isReactionBusy}
+                  onClick={handleDislikeToggle}
+                  className={
+                    `flex items-center gap-2 px-4 h-9 rounded-r-full text-sm font-medium transition-colors ` +
+                    (reaction === 'dislike' ? 'bg-black text-white' : 'text-gray-700 hover:bg-gray-200') +
+                    (!user?.id ? ' opacity-50 cursor-not-allowed' : '')
+                  }
+                >
+                  <ThumbsDown size={18} />
+                  {(dislikeCount ?? video.dislikes).toLocaleString()}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={openShare}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full text-sm font-medium h-9"
+              >
                 <Share2 size={18} />
                 Share
               </button>
@@ -404,6 +629,82 @@ const Watch: React.FC = () => {
 
       {/* Sidebar Recommendations */}
       {/* Up Next sidebar removed as requested */}
+      {isShareOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">Share</h3>
+              <button
+                type="button"
+                onClick={closeShare}
+                className="text-sm font-medium text-gray-500 hover:text-black"
+              >
+                Close
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-gray-500">Link</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={shareLink}
+                    readOnly
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="rounded-lg bg-black px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                >
+                  Share via device
+                </button>
+                <a
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm font-medium hover:bg-gray-50"
+                  href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Facebook
+                </a>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm font-medium hover:bg-gray-50"
+                  href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent(video?.title || 'Watch this video')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  X (Twitter)
+                </a>
+                <a
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-sm font-medium hover:bg-gray-50"
+                  href={`https://wa.me/?text=${encodeURIComponent((video?.title || 'Watch this video') + ' ' + shareLink)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  WhatsApp
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {toastMessage ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black text-white px-4 py-2 rounded-full text-sm shadow-lg">
+          {toastMessage}
+        </div>
+      ) : null}
     </div>
   );
 };

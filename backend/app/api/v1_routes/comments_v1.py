@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import db_session_dep, require_user
+from app.api.media import resolve_user_avatar
 from app.core.errors import Forbidden
 from app.models.comment import Comment
 from app.models.user import User
@@ -47,6 +48,7 @@ async def list_comments(skip: int = 0, limit: int = 100, db: AsyncSession = Depe
                 id=str(c.id),
                 userId=str(c.user_id),
                 username=(u.username if u else "unknown"),
+                avatar=(resolve_user_avatar(u) if u else "") or "",
                 text=c.text,
                 timestamp=ts,
                 likes=c.likes_count,
@@ -81,6 +83,7 @@ async def get_comments(videoId: str, db: AsyncSession = Depends(db_session_dep))
                 id=str(c.id),
                 userId=str(c.user_id),
                 username=(u.username if u else "unknown"),
+                avatar=(resolve_user_avatar(u) if u else "") or "",
                 text=c.text,
                 timestamp=ts,
                 likes=c.likes_count,
@@ -109,6 +112,7 @@ async def create_comment(
         id=str(row.id),
         userId=str(current_user.id),
         username=current_user.username,
+        avatar=resolve_user_avatar(current_user) or "",
         text=row.text,
         timestamp=ts,
         likes=row.likes_count,
@@ -138,6 +142,7 @@ async def update_comment(
         id=str(row.id),
         userId=str(row.user_id),
         username=current_user.username,
+        avatar=resolve_user_avatar(current_user) or "",
         text=row.text,
         timestamp=ts,
         likes=row.likes_count,

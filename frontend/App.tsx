@@ -11,6 +11,8 @@ const Live = lazy(() => import('./pages/Live'));
 const Login = lazy(() => import('./pages/Login'));
 const Channel = lazy(() => import('./pages/Channel'));
 const History = lazy(() => import('./pages/History'));
+const LikedVideos = lazy(() => import('./pages/LikedVideos'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
 const SearchResults = lazy(() => import('./pages/SearchResults'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
@@ -41,10 +43,16 @@ const App: React.FC = () => {
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="watch/:id" element={<Watch />} />
+              <Route path="user/:id" element={<UserProfile />} />
               <Route path="results" element={<SearchResults />} />
               <Route path="history" element={
                 <ProtectedRoute>
                   <History />
+                </ProtectedRoute>
+              } />
+              <Route path="liked" element={
+                <ProtectedRoute>
+                  <LikedVideos />
                 </ProtectedRoute>
               } />
               <Route path="upload" element={

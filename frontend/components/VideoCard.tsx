@@ -2,19 +2,16 @@ import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { Video } from '../types';
 import { CheckCircle } from 'lucide-react';
+import { resolveMediaUrl } from '../utils/media';
 
 interface VideoCardProps {
   video: Video;
   layout?: 'grid' | 'row';
 }
 
-const BACKEND_BASE_URL = '';
-
 const VideoCard: React.FC<VideoCardProps> = ({ video, layout = 'grid' }) => {
   if (layout === 'row') {
-    const thumbSrc = video.thumbnail && video.thumbnail.startsWith('/media/')
-      ? BACKEND_BASE_URL + video.thumbnail
-      : video.thumbnail || null;
+    const thumbSrc = resolveMediaUrl(video.thumbnail) || null;
     return (
       <Link to={`/watch/${video.id}`} className="flex gap-4 group mb-4 w-full">
         <div className="relative w-40 min-w-[160px] aspect-video rounded-xl overflow-hidden bg-gray-200">
@@ -46,9 +43,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, layout = 'grid' }) => {
     );
   }
 
-  const thumbSrc = video.thumbnail && video.thumbnail.startsWith('/media/')
-    ? BACKEND_BASE_URL + video.thumbnail
-    : video.thumbnail || null;
+  const thumbSrc = resolveMediaUrl(video.thumbnail) || null;
   return (
     <Link to={`/watch/${video.id}`} className="group flex flex-col gap-3">
       <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-200">
@@ -66,7 +61,7 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, layout = 'grid' }) => {
       </div>
       <div className="flex gap-3 items-start">
         <img
-          src={video.uploader.avatar}
+          src={resolveMediaUrl(video.uploader.avatar)}
           alt={video.uploader.username}
           loading="lazy"
           className="w-9 h-9 rounded-full object-cover"

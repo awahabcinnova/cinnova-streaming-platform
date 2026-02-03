@@ -5,6 +5,8 @@ from app.models.session import Session
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.models.video import Video
+from app.models.video_view import VideoView
+from app.models.video_reaction import VideoReaction
 
 __all__ = ["Base", "User", "Session", "RefreshToken",
-           "Video", "Comment", "Subscription"]
+           "Video", "Comment", "Subscription", "VideoView", "VideoReaction"]

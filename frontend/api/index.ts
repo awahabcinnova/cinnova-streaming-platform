@@ -60,6 +60,21 @@ export const videoAPI = {
         return response.json();
     },
 
+    getVideosByUser: async (userId: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/videos/user/${userId}`, { credentials: 'include' });
+        return response.json();
+    },
+
+    searchVideos: async (query: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/videos/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+        return response.json();
+    },
+
+    getLikedVideos: async () => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/videos/liked`, { credentials: 'include' });
+        return response.json();
+    },
+
     createVideo: async (formData: FormData) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/videos/`, {
             method: 'POST',
@@ -91,6 +106,22 @@ export const videoAPI = {
 
     trackView: async (id: string) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/videos/${id}/views`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        return response.json();
+    },
+
+    likeVideo: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/videos/${id}/like`, {
+            method: 'POST',
+            credentials: 'include',
+        });
+        return response.json();
+    },
+
+    dislikeVideo: async (id: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/videos/${id}/dislike`, {
             method: 'POST',
             credentials: 'include',
         });
@@ -153,6 +184,11 @@ export const userAPI = {
         const response = await fetch(`${API_BASE_URL}/api/v1/users/${id}`, { credentials: 'include' });
         return response.json();
     },
+
+    searchUsers: async (query: string) => {
+        const response = await fetch(`${API_BASE_URL}/api/v1/users/search?q=${encodeURIComponent(query)}`, { credentials: 'include' });
+        return response.json();
+    },
 };
 
 // Subscription API
@@ -165,8 +201,8 @@ export const subscriptionAPI = {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                channel_id: parseInt(channelId),
-                subscriber_id: parseInt(subscriberId),
+                channel_id: channelId,
+                subscriber_id: subscriberId,
             }),
         });
         return response.json();

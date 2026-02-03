@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, Search, Video, Bell, User, LogOut, Home as HomeIcon, Radio, PlaySquare, Menu as MenuIcon, LayoutDashboard, History, Clock, ThumbsUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { resolveMediaUrl } from '../utils/media';
 
 const Layout: React.FC = () => {
   const { user, login, logout, isAuthenticated } = useAuth();
@@ -71,7 +72,7 @@ const Layout: React.FC = () => {
 
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <img src={user.avatar} alt="Profile" className="w-8 h-8 rounded-full" />
+              <img src={resolveMediaUrl(user.avatar)} alt="Profile" className="w-8 h-8 rounded-full" />
             </div>
           ) : (
             <Link to="/login" className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-full text-blue-600 font-medium hover:bg-blue-50">
@@ -126,9 +127,13 @@ const Layout: React.FC = () => {
                 <PlaySquare size={20} />
                 Your Videos
               </Link>
-              <div className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg cursor-pointer flex items-center gap-4">
-                <ThumbsUp size={20} /> Liked Videos
-              </div>
+              <Link
+                to="/liked"
+                className={`flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium ${isActive('/liked') ? 'bg-gray-100' : 'hover:bg-gray-50 text-gray-700'}`}
+              >
+                <ThumbsUp size={20} />
+                Liked Videos
+              </Link>
 
               {isAuthenticated ? (
                 <button

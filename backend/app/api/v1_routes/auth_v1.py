@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import db_session_dep
+from app.api.media import resolve_user_avatar, resolve_user_banner
 from app.core.config import get_settings
 from app.core.cookies import clear_auth_cookies, normalize_samesite, set_auth_cookies
 from app.core.errors import AuthInvalid
@@ -37,8 +38,8 @@ def _to_v1_user(user: User, subscribers: int = 0) -> V1User:
     return V1User(
         id=str(user.id),
         username=user.username,
-        avatar=user.avatar_url or "",
-        banner=getattr(user, "banner_url", "") or "",
+        avatar=resolve_user_avatar(user) or "",
+        banner=resolve_user_banner(user) or "",
         subscribers=subscribers,
     )
 

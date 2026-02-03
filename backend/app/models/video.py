@@ -33,6 +33,10 @@ class Video(Base):
 
     views_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default="0")
+    likes_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0")
+    dislikes_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now())

@@ -10,6 +10,7 @@ export interface Comment {
   id: string;
   userId: string;
   username: string;
+  avatar?: string;
   text: string;
   timestamp: string;
   likes: number;
@@ -23,10 +24,13 @@ export interface Video {
   thumbnail: string;
   url: string;
   views: number;
+  likes: number;
+  dislikes: number;
   uploadedAt: string;
   duration: string;
   uploader: User;
   tags: string[];
+  viewerReaction?: 'like' | 'dislike' | null;
 }
 
 export enum StreamStatus {
