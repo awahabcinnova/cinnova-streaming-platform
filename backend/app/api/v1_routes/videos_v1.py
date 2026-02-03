@@ -53,12 +53,10 @@ async def list_videos(skip: int = 0, limit: int = 100, db: AsyncSession = Depend
     if not rows:
         return []
 
-    # batch load uploaders
     uploader_ids = {v.uploader_id for v in rows}
     users = (await db.execute(select(User).where(User.id.in_(uploader_ids)))).scalars().all()
     users_by_id = {u.id: u for u in users}
 
-    # subscriber counts
     subs = (await db.execute(select(Subscription.channel_id))).scalars().all()
     counts: dict[uuid.UUID, int] = {}
     for cid in subs:
@@ -212,7 +210,6 @@ async def create_video(
     if uploader is None:
         raise RuntimeError("No users exist; register first")
 
-    # Save files to disk
     video_url = ""
     thumbnail_url = ""
     media_root = os.path.abspath(os.path.join(
@@ -361,7 +358,6 @@ async def like_video(
             await db.execute(update(Video).where(Video.id == vid).values(likes_count=likes, dislikes_count=dislikes))
             await db.commit()
             return {"ok": True, "reaction": "like", "likes": likes, "dislikes": dislikes}
-        # Another request inserted concurrently; return current reaction without changing counts
         current = await _get_reaction(db, vid, current_user.id)
         likes, dislikes = await _reaction_counts(db, vid)
         await db.execute(update(Video).where(Video.id == vid).values(likes_count=likes, dislikes_count=dislikes))

@@ -82,7 +82,6 @@ async def upload_avatar(
     avatar: UploadFile = File(...),
     current_user: User = Depends(require_user),
 ):
-    # Save avatar to media/avatars
     ext = os.path.splitext(avatar.filename)[1]
     filename = f"{current_user.id}{ext}"
     avatar_dir = os.path.abspath(os.path.join(
@@ -91,7 +90,6 @@ async def upload_avatar(
     avatar_path = os.path.join(avatar_dir, filename)
     with open(avatar_path, "wb") as f:
         f.write(await avatar.read())
-    # Update user avatar_url
     current_user.avatar_url = f"/media/avatars/{filename}"
     await db.commit()
     return {"avatar": current_user.avatar_url}
@@ -102,7 +100,6 @@ async def delete_avatar(
     db: AsyncSession = Depends(db_session_dep),
     current_user: User = Depends(require_user),
 ):
-    # Remove avatar file
     if current_user.avatar_url:
         avatar_path = os.path.abspath(os.path.join(os.path.dirname(
             __file__), f"../../../{current_user.avatar_url.lstrip('/')}"))
@@ -119,7 +116,6 @@ async def upload_banner(
     banner: UploadFile = File(...),
     current_user: User = Depends(require_user),
 ):
-    # Save banner to media/banners
     ext = os.path.splitext(banner.filename)[1]
     filename = f"{current_user.id}{ext}"
     banner_dir = os.path.abspath(os.path.join(
@@ -128,7 +124,6 @@ async def upload_banner(
     banner_path = os.path.join(banner_dir, filename)
     with open(banner_path, "wb") as f:
         f.write(await banner.read())
-    # Update user banner_url
     current_user.banner_url = f"/media/banners/{filename}"
     await db.commit()
     return {"banner": current_user.banner_url}
@@ -139,7 +134,6 @@ async def delete_banner(
     db: AsyncSession = Depends(db_session_dep),
     current_user: User = Depends(require_user),
 ):
-    # Remove banner file
     if getattr(current_user, 'banner_url', None):
         banner_path = os.path.abspath(os.path.join(os.path.dirname(
             __file__), f"../../../{current_user.banner_url.lstrip('/')}"))

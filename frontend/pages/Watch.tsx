@@ -59,7 +59,6 @@ const Watch: React.FC = () => {
     const fetchVideoData = async () => {
       if (id) {
         try {
-          // Fetch video data
           const videoData = await videoAPI.getVideoById(id);
           setVideo(videoData);
           setSubscriberCount(videoData?.uploader?.subscribers ?? 0);
@@ -67,11 +66,9 @@ const Watch: React.FC = () => {
           setDislikeCount(videoData?.dislikes ?? 0);
           setReaction(videoData?.viewerReaction ?? null);
 
-          // Fetch comments for this video
           const commentsData = await commentAPI.getComments(id);
           setComments(commentsData);
 
-          // Track view only once per user per session (logged-in users only)
           if (user?.id) {
             const viewedKey = `viewed_video_${id}_user_${user.id}`;
             if (!sessionStorage.getItem(viewedKey) && !trackingViewRef.current[viewedKey]) {
@@ -87,7 +84,6 @@ const Watch: React.FC = () => {
             }
           }
 
-          // Scroll to top
           window.scrollTo(0, 0);
         } catch (error) {
           console.error('Error fetching video data:', error);
@@ -96,7 +92,6 @@ const Watch: React.FC = () => {
     };
 
     fetchVideoData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, user?.id]);
 
   useEffect(() => {
@@ -198,7 +193,6 @@ const Watch: React.FC = () => {
         url: shareLink,
       });
     } catch {
-      // User cancelled or share failed; keep silent
     }
   };
 
@@ -242,10 +236,8 @@ const Watch: React.FC = () => {
     if (!user?.id) return;
 
     try {
-      // Submit comment to backend
       const commentResponse = await commentAPI.createComment(id, newComment, null);
 
-      // Add the new comment to the list
       setComments((prev) => [commentResponse, ...prev]);
       setNewComment('');
     } catch (error) {
@@ -483,20 +475,17 @@ const Watch: React.FC = () => {
 
   return (
     <div className="max-w-[1800px] mx-auto flex flex-col lg:flex-row gap-6 relative">
-      {/* Main Column */}
       <div className="flex-1">
-        {/* Video Player Container */}
         <div className="w-full aspect-video bg-black rounded-xl overflow-hidden shadow-lg relative group">
           <video
             src={resolveMediaUrl(video.url)}
             className="w-full h-full object-contain"
             controls
             autoPlay
-            muted // Muted for autoplay policy
+            muted
           />
         </div>
 
-        {/* Video Info */}
         <div className="mt-4">
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">{video.title}</h1>
 
@@ -589,7 +578,6 @@ const Watch: React.FC = () => {
           </div>
         </div>
 
-        {/* Comments Section */}
         <div className="mt-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold">{comments.length} Comments</h3>
@@ -627,8 +615,6 @@ const Watch: React.FC = () => {
         </div>
       </div>
 
-      {/* Sidebar Recommendations */}
-      {/* Up Next sidebar removed as requested */}
       {isShareOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-xl bg-white shadow-xl">

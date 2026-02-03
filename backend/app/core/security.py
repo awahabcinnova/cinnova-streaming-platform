@@ -31,7 +31,6 @@ def _now() -> datetime:
 
 
 def new_session_token() -> str:
-    # 32 bytes URL-safe => ~43 chars, good entropy.
     return secrets.token_urlsafe(32)
 
 

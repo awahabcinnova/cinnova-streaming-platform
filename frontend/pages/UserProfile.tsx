@@ -59,7 +59,6 @@ const UserProfile: React.FC = () => {
           setIsSubscribed(false);
         }
       } catch {
-        // keep previous counts
       }
     };
     loadSubscribers();

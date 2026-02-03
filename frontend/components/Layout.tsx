@@ -27,7 +27,6 @@ const Layout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-100 z-50 flex items-center px-4 justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -84,7 +83,6 @@ const Layout: React.FC = () => {
       </nav>
 
       <div className="flex pt-16 flex-1">
-        {/* Sidebar */}
         <aside className={`fixed left-0 top-16 bottom-0 bg-white w-64 p-3 overflow-y-auto transition-transform duration-300 border-r border-gray-100 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} hidden md:block z-40`}>
           <div className="space-y-1">
             <Link
@@ -121,7 +119,7 @@ const Layout: React.FC = () => {
                 History
               </Link>
               <Link
-                to="/channel" // Placeholder for "Your Videos" usually same as channel content
+                to="/channel"
                 className={`flex items-center gap-4 px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 text-gray-700`}
               >
                 <PlaySquare size={20} />
@@ -149,7 +147,6 @@ const Layout: React.FC = () => {
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className={`flex-1 p-4 md:p-6 transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
           <Outlet />
         </main>

@@ -17,7 +17,6 @@ const Upload: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      // Auto-set title from filename initially
       setTitle(e.target.files[0].name.replace(/\.[^/.]+$/, ""));
     }
   };
@@ -42,25 +41,20 @@ const Upload: React.FC = () => {
     setUploadProgress(0);
 
     try {
-      // Create form data for upload
       const formData = new FormData();
-      formData.append('video', file); // must match backend param name
+      formData.append('video', file);
       formData.append('title', title);
       if (description) formData.append('description', description);
-      if (thumbnail) formData.append('thumbnail', thumbnail); // send thumbnail if present
+      if (thumbnail) formData.append('thumbnail', thumbnail);
       if (tags.length > 0) formData.append('tags', tags.join(','));
-      // duration can be added if available
 
-      // Call the API to upload the video
       const response = await videoAPI.createVideo(formData);
 
-      // Update progress to 100% when done
       setUploadProgress(100);
 
-      // Redirect after a short delay
       setTimeout(() => {
         setIsUploading(false);
-        navigate('/'); // Redirect to home after success
+        navigate('/');
       }, 1000);
     } catch (error) {
       console.error('Upload failed:', error);
@@ -99,7 +93,6 @@ const Upload: React.FC = () => {
           </div>
         ) : (
           <form onSubmit={handleUpload} className="space-y-8">
-            {/* Header / File Info */}
             <div className="flex flex-col md:flex-row items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4">
               <div className="flex items-center gap-4 w-full md:w-auto">
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 flex-shrink-0">
@@ -119,7 +112,6 @@ const Upload: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column: Details */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">Details</h3>
@@ -155,7 +147,6 @@ const Upload: React.FC = () => {
                   <p className="text-sm text-gray-500 -mt-3">Select or upload a picture that shows what's in your video. A good thumbnail stands out and draws viewers' attention.</p>
 
                   <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                    {/* Upload Button */}
                     <div className="relative group flex-shrink-0">
                       <input
                         type="file"
@@ -211,7 +202,6 @@ const Upload: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Column: Preview */}
               <div className="hidden lg:block">
                 <div className="sticky top-24">
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">

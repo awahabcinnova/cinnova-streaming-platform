@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Check } from 'lucide-react';
 import { authAPI } from '../api';
 
-// Google Icon Component
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 24 24">
     <path
@@ -37,8 +36,6 @@ const Login: React.FC = () => {
       navigate('/');
     }
   }, [isAuthLoading, isAuthenticated, navigate]);
-
-  // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -86,7 +83,6 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl flex overflow-hidden min-h-[600px]">
 
-        {/* Left Side - Form */}
         <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
@@ -200,7 +196,6 @@ const Login: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Side - Image/Banner */}
         <div className="hidden md:block w-1/2 bg-gray-900 relative">
           <div className="absolute inset-0 bg-gradient-to-br from-red-600/20 to-blue-900/40 mix-blend-overlay"></div>
           <img

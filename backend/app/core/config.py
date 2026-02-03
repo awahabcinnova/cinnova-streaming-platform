@@ -33,7 +33,6 @@ class Settings(BaseSettings):
     cookie_samesite: str = Field(default="lax", alias="COOKIE_SAMESITE")
     cookie_domain: str | None = Field(default=None, alias="COOKIE_DOMAIN")
 
-    # Cookie names
     cookie_access_name: str = "access_token"
     cookie_refresh_name: str = "refresh_token"
     cookie_session_name: str = "session_token"
@@ -50,5 +49,5 @@ _settings: Settings | None = None
 def get_settings() -> Settings:
     global _settings
     if _settings is None:
-        _settings = Settings()  # type: ignore[call-arg]
+        _settings = Settings() 
     return _settings

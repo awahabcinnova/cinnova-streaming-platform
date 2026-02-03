@@ -10,11 +10,6 @@ from app.models.base import Base
 
 
 class RefreshToken(Base):
-    """
-    Stores refresh JWT "jti" for rotation and revocation (server-side).
-
-    Cookie stores the refresh JWT; DB stores its `jti` so we can revoke/rotate and detect reuse.
-    """
 
     __tablename__ = "refresh_tokens"
 

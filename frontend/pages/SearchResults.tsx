@@ -56,7 +56,6 @@ const SearchResults: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto pt-4">
-      {/* Filters */}
       <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4 overflow-x-auto">
         {[
           { key: 'all', label: 'All' },

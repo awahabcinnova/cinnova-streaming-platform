@@ -20,12 +20,6 @@ def _now() -> datetime:
 
 
 class AuthContextMiddleware(BaseHTTPMiddleware):
-    """
-    Extracts cookies, validates access JWT, checks active server-side session, and attaches:
-      - request.state.user: User | None
-      - request.state.session_id: UUID | None
-    Never raises auth errors directly; endpoints enforce auth via dependencies.
-    """
 
     async def dispatch(self, request: Request, call_next) -> Response:
         settings = get_settings()

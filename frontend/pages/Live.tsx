@@ -42,7 +42,6 @@ const Live: React.FC = () => {
 
     return (
         <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] gap-6">
-            {/* Stream Preview */}
             <div className="flex-1 flex flex-col">
                 <div className="bg-black rounded-xl overflow-hidden relative flex-1 min-h-[400px]">
                     <video
@@ -115,7 +114,6 @@ const Live: React.FC = () => {
                 </div>
             </div>
 
-            {/* Live Chat */}
             <div className="w-full lg:w-96 bg-white border border-gray-200 rounded-xl flex flex-col h-[500px] lg:h-auto">
                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                     <h3 className="font-semibold">Live Chat</h3>

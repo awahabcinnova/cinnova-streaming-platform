@@ -11,7 +11,6 @@ const Channel: React.FC = () => {
     const [videos, setVideos] = useState<Video[]>([]);
     const [search, setSearch] = useState('');
 
-    // Edit Modal State
     const [editingVideo, setEditingVideo] = useState<Video | null>(null);
     const [editForm, setEditForm] = useState({ title: '', description: '' });
 
@@ -21,7 +20,6 @@ const Channel: React.FC = () => {
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     const withCacheBust = (url: string) => {
-        // Only cache-bust our own media URLs. External providers (e.g. Google) can rate-limit.
         const resolved = resolveMediaUrl(url);
         if (!resolved) return '';
         if (!resolved.includes('/media/')) return resolved;
@@ -29,7 +27,6 @@ const Channel: React.FC = () => {
         return `${resolved}${resolved.includes('?') ? '&' : '?'}v=${ts}`;
     };
 
-    // Sync user data with local state when user object changes
     useEffect(() => {
         if (user) {
             setBanner(user.banner ? withCacheBust(user.banner) : '');
@@ -43,7 +40,6 @@ const Channel: React.FC = () => {
 
     useEffect(() => {
         if (!user?.id) return;
-        // Fetch all videos uploaded by this user
         const fetchUserVideos = async () => {
             try {
                 const allVideos = await videoAPI.getAllVideos();
@@ -99,12 +95,10 @@ const Channel: React.FC = () => {
                     setAvatar(withCacheBust(String(data.avatar)));
                 }
             } catch {
-                // ignore
             }
             await refreshMe();
         }
     };
-    // Handle banner upload
     const handleBannerChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const formData = new FormData();
@@ -120,12 +114,10 @@ const Channel: React.FC = () => {
                     setBanner(withCacheBust(String(data.banner)));
                 }
             } catch {
-                // ignore
             }
             await refreshMe();
         }
     };
-    // Remove avatar
     const handleRemoveAvatar = async () => {
         await fetch('/api/v1/users/me/avatar', {
             method: 'DELETE',
@@ -134,7 +126,6 @@ const Channel: React.FC = () => {
         setAvatar('');
         await refreshMe();
     };
-    // Remove banner
     const handleRemoveBanner = async () => {
         await fetch('/api/v1/users/me/banner', {
             method: 'DELETE',
@@ -148,9 +139,7 @@ const Channel: React.FC = () => {
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
-            {/* Channel Header */}
             <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
-                {/* Banner */}
                 <div className="h-32 md:h-48 bg-gradient-to-r from-slate-800 to-slate-600 relative">
                     {banner && (
                         <img src={banner} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
@@ -178,7 +167,6 @@ const Channel: React.FC = () => {
                     />
                 </div>
 
-                {/* Profile Info */}
                 <div className="px-6 pb-6">
                     <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-10">
                         <div className="relative">
@@ -226,7 +214,6 @@ const Channel: React.FC = () => {
                 </div>
             </div>
 
-            {/* Content Management Section */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
                     <h2 className="text-xl font-bold">Channel Content</h2>
@@ -252,7 +239,6 @@ const Channel: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Video Table */}
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -325,7 +311,6 @@ const Channel: React.FC = () => {
                 </div>
             </div>
 
-            {/* Edit Modal */}
             {editingVideo && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">

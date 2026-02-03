@@ -32,7 +32,6 @@ class AuthService:
         if existing is not None:
             raise Conflict("Email already registered")
 
-        # username is required by DB schema; caller can override before commit if desired.
         user = User(
             email=email,
             password_hash=hash_password(password),
@@ -54,12 +53,7 @@ class AuthService:
 
     @staticmethod
     async def create_login_session(db: AsyncSession, *, user: User) -> tuple[Session, str, str, str]:
-        """
-        Creates a brand-new server-side session (prevents session fixation),
-        plus access/refresh tokens.
-
-        Returns: (session, session_token, access_jwt, refresh_jwt)
-        """
+     
         settings = get_settings()
 
         session_token = new_session_token()
@@ -112,18 +106,12 @@ class AuthService:
         user_id: uuid.UUID,
         presented_jti: str,
     ) -> tuple[str, str]:
-        """
-        Token rotation:
-        - presented refresh jti must exist and be unrevoked & unexpired
-        - we revoke it and mint a new refresh token (new jti) + new access token
-        """
+
         now = _now()
         token_row = await db.scalar(select(RefreshToken).where(RefreshToken.jti == presented_jti))
         if token_row is None or token_row.session_id != session_id:
             raise AuthInvalid("Refresh token is invalid")
 
-        # If a refresh token is presented after it was already revoked, that's a strong signal
-        # of token theft/reuse. Invalidate the whole session defensively.
         if token_row.revoked_at is not None:
             await AuthService.revoke_session(db, session_id=session_id)
             raise AuthInvalid("Refresh token reuse detected")
@@ -131,7 +119,6 @@ class AuthService:
         if token_row.expires_at <= now:
             raise AuthInvalid("Refresh token is expired")
 
-        # Revoke old refresh and mint new.
         new_refresh, new_jti, new_refresh_expires_at = create_refresh_token(
             user_id=user_id, session_id=session_id)
         db.add(RefreshToken(jti=new_jti, session_id=session_id,

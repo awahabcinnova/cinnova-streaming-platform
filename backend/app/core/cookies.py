@@ -8,8 +8,6 @@ from app.core.config import Settings, get_settings
 
 
 def normalize_samesite(value: str) -> str:
-    # Starlette expects: "strict" | "lax" | "none".
-    # Users often write env like COOKIE_SAMESITE="lax" (quotes included).
     v = (value or "").strip().strip('"').strip("'").strip().lower()
     if v in {"lax", "strict", "none"}:
         return v
@@ -38,7 +36,6 @@ def set_auth_cookies(
         "path": "/",
     }
 
-    # Access JWT is short-lived; cookie can be session-scoped or short max_age.
     response.set_cookie(
         key=settings.cookie_access_name,
         value=access_token,
@@ -46,7 +43,6 @@ def set_auth_cookies(
         **common,
     )
 
-    # Refresh JWT long-lived.
     response.set_cookie(
         key=settings.cookie_refresh_name,
         value=refresh_token,
@@ -54,10 +50,8 @@ def set_auth_cookies(
         **common,
     )
 
-    # Server-side session token (opaque) aligns with session expiry.
     now = datetime.now(UTC)
     if session_expires_at.tzinfo is None:
-        # Assume UTC if DB returned naive datetime (should be tz-aware with timezone=True).
         session_expires_at = session_expires_at.replace(tzinfo=UTC)
     max_age = int((session_expires_at - now).total_seconds())
     if max_age < 0:

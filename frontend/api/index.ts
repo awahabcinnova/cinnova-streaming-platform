@@ -1,8 +1,5 @@
-// API Service for connecting frontend to backend
-// Use same-origin relative URLs (works with Vite proxy in development)
 const API_BASE_URL = '';
 
-// Authentication API
 export const authAPI = {
     login: async (email: string, password: string) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
@@ -48,7 +45,6 @@ export const authAPI = {
     },
 };
 
-// Video API
 export const videoAPI = {
     getAllVideos: async (skip: number = 0, limit: number = 100) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/videos/?skip=${skip}&limit=${limit}`, { credentials: 'include' });
@@ -129,7 +125,6 @@ export const videoAPI = {
     },
 };
 
-// Comment API
 export const commentAPI: {
     getComments: (videoId: string) => Promise<any>;
     createComment: (videoId: string, text: string, parentId?: string | null) => Promise<any>;
@@ -178,7 +173,6 @@ export const commentAPI: {
     },
 };
 
-// User API
 export const userAPI = {
     getUser: async (id: string) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/users/${id}`, { credentials: 'include' });
@@ -191,7 +185,6 @@ export const userAPI = {
     },
 };
 
-// Subscription API
 export const subscriptionAPI = {
     subscribe: async (channelId: string, subscriberId: string) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/subscriptions/subscribe`, {
@@ -229,7 +222,6 @@ export const subscriptionAPI = {
     },
 };
 
-// Livestream API
 export const livestreamAPI = {
     getAllLivestreams: async (skip: number = 0, limit: number = 100) => {
         const response = await fetch(`${API_BASE_URL}/api/v1/livestreams/?skip=${skip}&limit=${limit}`, { credentials: 'include' });

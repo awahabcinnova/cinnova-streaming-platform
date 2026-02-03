@@ -11,10 +11,6 @@ from app.models.base import Base
 
 
 class Session(Base):
-    """
-    Server-side session. Identified by `id` (UUID) embedded in JWTs and stored as cookie token
-    `session_token` (opaque). We store only a hash of the opaque token to mitigate cookie theft.
-    """
 
     __tablename__ = "sessions"
 

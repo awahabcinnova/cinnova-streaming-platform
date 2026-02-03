@@ -25,11 +25,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = useCallback(async () => {
     setUser(null);
     setIsAuthLoading(false);
-    // Best-effort server logout (clears cookies server-side if implemented).
     try {
       await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
     } catch {
-      // ignore
     }
   }, []);
 
@@ -42,7 +40,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
       }
     } catch {
-      // ignore
     }
   }, []);
 

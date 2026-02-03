@@ -13,7 +13,6 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title=settings.app_name)
 
-    # Add CORS middleware for frontend
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:3000", "http://127.0.0.1:3000",
@@ -26,7 +25,6 @@ def create_app() -> FastAPI:
     app.add_middleware(AuthContextMiddleware)
     app.add_exception_handler(AppError, app_error_handler)
 
-    # Serve media files (videos, thumbnails)
     from fastapi.staticfiles import StaticFiles
     import os
     media_dir = os.path.abspath(os.path.join(
@@ -37,12 +35,10 @@ def create_app() -> FastAPI:
 
     @app.get("/healthz")
     async def healthz() -> dict:
-        """Simple health check endpoint that doesn't require DB"""
         return {"ok": True, "status": "healthy"}
 
     @app.get("/")
     async def root() -> dict:
-        """API root endpoint"""
         return {
             "name": settings.app_name,
             "version": "1.0.0",

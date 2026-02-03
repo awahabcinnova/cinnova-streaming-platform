@@ -11,7 +11,6 @@ const History: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // Get watched video IDs from sessionStorage/localStorage
     const watchedKeyPrefix = user?.id ? `viewed_video_` : `viewed_video_`;
     const watchedIds: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
@@ -22,7 +21,6 @@ const History: React.FC = () => {
         if (videoId) watchedIds.push(videoId);
       }
     }
-    // Fetch video details for watched IDs
     const fetchWatchedVideos = async () => {
       const videos: Video[] = [];
       for (const vid of watchedIds) {
@@ -35,7 +33,6 @@ const History: React.FC = () => {
     };
     if (watchedIds.length > 0) fetchWatchedVideos();
     else setHistory([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const filteredHistory = history.filter(v =>
@@ -68,7 +65,6 @@ const History: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto pt-4">
-      {/* Main List */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold">Watch History</h1>

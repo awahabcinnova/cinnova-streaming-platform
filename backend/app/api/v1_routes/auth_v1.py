@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 def _username_from_email(email: str) -> str:
-    # Simple deterministic username seed; collisions handled by suffixing.
     base = re.sub(r"[^a-zA-Z0-9_]+", "", email.split("@", 1)[0])[:20] or "user"
     return base.lower()
 
@@ -166,7 +165,6 @@ async def google_callback(
     if user is None:
         user = await db.scalar(select(User).where(User.email == email))
         if user is None:
-            # Create user with a random password hash; user can still login via Google.
             random_password = secrets.token_urlsafe(24)
             user = await AuthService.register_user(db, email=email, password=random_password, display_name=None)
             user.username = _username_from_email(email)
@@ -174,7 +172,6 @@ async def google_callback(
         user.google_email = email
         await db.flush()
 
-    # Ensure avatar is stable and same-origin (avoid hotlinking/rate-limits) for both new and existing users.
     if user is not None and picture and (not user.avatar_url or str(user.avatar_url).startswith("http")):
         try:
             async with httpx.AsyncClient(timeout=10) as client:
@@ -227,7 +224,6 @@ async def login(
     username: str = Form(...),
     password: str = Form(...),
 ) -> dict:
-    # Frontend sends `username` but uses email value.
     user = await AuthService.authenticate_user(db, email=username, password=password)
     session, session_token, access, refresh = await AuthService.create_login_session(db, user=user)
     await db.commit()
@@ -238,7 +234,6 @@ async def login(
         session_token=session_token,
         session_expires_at=session.expires_at,
     )
-    # Frontend expects JSON body, but tokens must never be returned. Return user only.
     return _to_v1_user(user).model_dump()
 
 
@@ -251,10 +246,8 @@ async def register(
     first_name: str = Form(""),
     last_name: str = Form(""),
 ) -> dict:
-    # v1 UI wants form fields. We map to our user model.
     display_name = (first_name + " " + last_name).strip() or None
 
-    # Create a unique username
     base = _username_from_email(email)
     username_candidate = base
     for i in range(0, 1000):
@@ -283,7 +276,6 @@ async def register(
 
 @router.get("/users/me", status_code=status.HTTP_200_OK)
 async def users_me(request: Request) -> dict:
-    # Frontend currently calls this with Bearer token, but we use cookie auth.
     user = getattr(request.state, "user", None)
     if user is None:
         raise AuthInvalid("Not authenticated")
@@ -306,12 +298,7 @@ async def logout(request: Request, response: Response, db: AsyncSession = Depend
 
 @router.post("/refresh", status_code=status.HTTP_204_NO_CONTENT)
 async def refresh(request: Request, response: Response, db: AsyncSession = Depends(db_session_dep)) -> None:
-    """
-    Cookie-only refresh with rotation:
-    - validates refresh JWT cookie
-    - checks server-side session token cookie + DB session
-    - rotates refresh token and mints new access token
-    """
+
     from datetime import UTC, datetime
     import uuid
     from app.core.config import get_settings
