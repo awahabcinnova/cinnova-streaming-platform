@@ -1,46 +1,36 @@
-# Frontend â€” StreamFlow UI
+# Frontend — StreamFlow UI
 
-Modern React UI built with **Vite** and **TypeScript**, designed to feel like a polished video platform.
+Modern React UI built with Vite and TypeScript, designed to feel like a polished video platform.
 
-## Tech stack
+**Tech Stack**
+- [React](https://react.dev/)
+- [Vite](https://vitejs.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [React Router](https://reactrouter.com/)
+- [Lucide Icons](https://lucide.dev/)
 
-- **React**
-- **Vite**
-- **TypeScript**
-- **React Router**
-- **lucide-react** (icons)
+**Key Behaviors**
+- Cookie-auth hydration via `GET /api/v1/auth/users/me`
+- HashRouter routes (`/#/watch/:id`, `/#/history`, `/#/channel`)
+- Watch history stored in `sessionStorage`
 
-## Key behaviors
-
-- **Cookie-auth hydration on refresh**
-  - On startup, the app calls `GET /api/v1/auth/users/me` (same-origin) to restore session.
-- **Routing**
-  - Uses HashRouter (`/#/watch/:id`, `/#/history`, `/#/channel`, etc.)
-- **Watch history**
-  - Stored in `sessionStorage` with one-click clear.
-
-## API proxy (development)
-
-To keep auth cookies stable, the frontend calls backend via same-origin paths:
-
+**Dev Proxy**
+The frontend calls backend via same-origin paths:
 - `/api/v1/*`
 - `/media/*`
 
-`vite.config.ts` proxies these to the backend server (typically `http://127.0.0.1:8000`).
+`vite.config.ts` proxies these to the backend server (`http://127.0.0.1:8000`).
 
-## Run locally
-
+**Run Locally**
 ```bash
 npm install
 npm run dev
 ```
 
 Open:
-
 - `http://localhost:3000`
 
-## Build
-
+**Build**
 ```bash
 npm run build
 npm run preview

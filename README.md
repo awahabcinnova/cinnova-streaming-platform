@@ -1,57 +1,32 @@
-# StreamFlow — Streaming & Video Platform
+# StreamFlow � Streaming & Video Platform
 
-Fast, modern, YouTube-style streaming platform built with a **FastAPI + PostgreSQL** backend and a **React (Vite)** frontend.
+A modern YouTube-style streaming platform with a FastAPI + PostgreSQL backend and a React (Vite) frontend.
 
-<div align="center">
+**Tech Stack**
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [PostgreSQL](https://www.postgresql.org/)
+- [SQLAlchemy (Async)](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
+- [Alembic](https://alembic.sqlalchemy.org/)
+- [React](https://react.dev/)
+- [Vite](https://vitejs.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [React Router](https://reactrouter.com/)
+- [Lucide Icons](https://lucide.dev/)
 
-**Backend**
+**Highlights**
+- Cookie-based auth with refresh sessions
+- Google OAuth 2.0 login
+- Watch page, history, likes, subscriptions
+- Media hosting via `/media/*`
+- User profiles with avatar and banner upload
 
-FastAPI • PostgreSQL • SQLAlchemy (Async) • Alembic • HttpOnly Cookie Auth • Google OAuth
+**Repo Structure**
+- `backend/` FastAPI app, auth, models, migrations, media storage, API routes
+- `frontend/` React UI (Vite), pages, components, API client, auth hydration
 
-**Frontend**
+**Local Development**
 
-React • Vite • React Router • TypeScript • Lucide Icons
-
-</div>
-
-## Features
-
-- **Secure authentication (cookie-based)**
-  - Short-lived access JWT + long-lived refresh JWT in **HttpOnly** cookies
-  - Server-side sessions in DB (supports session revoke)
-- **Google Login (OAuth 2.0)**
-  - Local development supported via redirect URIs
-- **Core product flows**
-  - Home feed
-  - Watch page
-  - Watch history (sessionStorage) with **Clear History**
-- **Channel profile customization**
-  - Upload custom **avatar** and **banner**
-- **Media hosting**
-  - Backend serves `/media/*` (thumbnails, videos, avatars, banners)
-  - Frontend dev server proxies `/media/*` so URLs remain same-origin
-
-## Repo structure
-
-- `backend/`
-  - FastAPI app, auth, models, migrations, media storage, API routes
-- `frontend/`
-  - React UI (Vite), pages, components, API client, auth hydration
-
-## Architecture (quick view)
-
-- **Frontend** calls backend via same-origin paths:
-  - `/api/v1/*` (API)
-  - `/media/*` (assets)
-- In development, **Vite proxy** forwards those to `http://127.0.0.1:8000`
-- **Backend auth** sets cookies via responses (no token JSON).
-
-## Quick start (local development)
-
-### 1) Backend
-
-From `backend/`:
-
+Backend (from `backend/`):
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
@@ -60,49 +35,29 @@ alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2) Frontend
-
-From `frontend/`:
-
+Frontend (from `frontend/`):
 ```bash
 npm install
 npm run dev
 ```
 
 Open:
-
 - Frontend: `http://localhost:3000`
 - Backend: `http://127.0.0.1:8000`
 
-## Environment variables
-
+**Environment Variables**
 Backend config is in `backend/.env`.
 
 Minimum:
-
 - `DATABASE_URL`
 - `JWT_SECRET_KEY`
 
 Optional (Google login):
-
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REDIRECT_URI`
 - `FRONTEND_BASE_URL`
 
-## Common scripts
-
-### Frontend
-
-- `npm run dev`
-- `npm run build`
-- `npm run preview`
-
-### Backend
-
-- `uvicorn app.main:app --reload --port 8000`
-- `alembic upgrade head`
-
-## Notes
-
-- Keep secrets out of git (see `.gitignore` for `.env`).
+**Notes**
+- Keep secrets out of git (see `.gitignore`)
+- Media is served from `/media/*` and proxied in dev
